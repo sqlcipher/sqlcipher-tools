@@ -1,34 +1,45 @@
 /* 
-  make sqlite3.c
-  gcc torture.c -I../sqlcipher -DSQLITE_HAS_CODEC -l crypto -o torture
-  a.out
+  gcc load.c -I../sqlcipher -DSQLITE_HAS_CODEC -l crypto -o load
 */
 
 #include <sqlite3.c>
 #include <stdio.h>
 
-#define ERROR(X)  {printf("[ERROR] "); printf X;fflush(stdout);}
+#define ERROR(X)  {printf("[ERROR] iteration %d: ", i); printf X;fflush(stdout);}
 
 int main(int argc, char **argv) {
   sqlite3 *db;
   const char* key = "test123";
   const char* file = "sqlcipher.db";
   int i;
-  int loops = 50000;
-
+  int loops = 1000000;
+  int insert_rows = 10;
+  int print_every = 1000;
   srand(0);
 
   for(i = 0; i < loops; i++) {
+    if( i % print_every == 0 ) printf("iteration %d - %d...\n", i, i + print_every - 1); 
 
     if (sqlite3_open(file, &db) == SQLITE_OK) {
       int row, rc, master_rows;
       sqlite3_stmt *stmt;
-  
+      
+      if(db == NULL) {
+        ERROR(("sqlite3_open reported OK, but db is null, retrying open %s\n", sqlite3_errmsg(db)))
+        continue;
+      }
+ 
       if(sqlite3_key(db, key, strlen(key)) != SQLITE_OK) {
 	ERROR(("error setting key %s\n", sqlite3_errmsg(db)))
         exit(1);
       }
-          
+
+      if(sqlite3_rekey(db, key, strlen(key)) != SQLITE_OK) {
+	ERROR(("error setting rekey %s\n", sqlite3_errmsg(db)))
+        exit(1);
+      }
+    
+    
       /* read schema. If no rows, create table and stuff
          if error - close it up!*/
       if(sqlite3_prepare_v2(db, "SELECT count(*) FROM sqlite_master;", -1, &stmt, NULL) == SQLITE_OK) {
@@ -59,7 +70,7 @@ int main(int argc, char **argv) {
      
 
       if(sqlite3_prepare_v2(db, "INSERT INTO t1(a,b) VALUES (?, ?);", -1, &stmt, NULL) == SQLITE_OK) {
-        for(row = 0; row < 1000; row++) {
+        for(row = 0; row < insert_rows; row++) {
           sqlite3_bind_int(stmt, 1, rand());
           sqlite3_bind_int(stmt, 2, rand());
           if (sqlite3_step(stmt) != SQLITE_DONE) {

@@ -1,6 +1,5 @@
 /* 
-  make sqlite3.c
-  gcc strip.c -I../openssl-1.0.0a/include -l crypto -o strip -g
+  gcc decrypt.c -I../openssl-1.0.0a/include -l crypto -o decrypt -g
 */
 
 #include <stdio.h>
@@ -13,7 +12,6 @@
 #define PAGESIZE 1024
 #define PBKDF2_ITER 4000
 #define FILE_HEADER_SZ 16
-
 
 int main(int argc, char **argv) {
   const char* infile = "sqlcipher.db";
