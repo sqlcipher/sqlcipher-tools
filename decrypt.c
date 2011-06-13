@@ -1,4 +1,6 @@
 /* 
+  decrypts a sqlcipher version 1 database at the raw page level, bypassing sqlite internals completely
+
   gcc decrypt.c -I../openssl-1.0.0a/include -l crypto -o decrypt -g
 */
 

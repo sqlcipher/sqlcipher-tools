@@ -1,5 +1,7 @@
 /* 
-  gcc recrypt.c -I../sqlcipher -DSQLITE_HAS_CODEC -l crypto -o recrypt
+  test utility for sqlite based backup encrytion to demostrate brokenness
+
+  gcc backuptest.c -I../sqlcipher -DSQLITE_HAS_CODEC -l crypto -o backuptest
 */
 
 #include <sqlite3.c>

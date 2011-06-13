@@ -1,4 +1,6 @@
 /* 
+  generates a large amount of load for stress testing via repeted opens, inserts and deletes
+
   gcc load.c -I../sqlcipher -DSQLITE_HAS_CODEC -l crypto -o load
 */
 
