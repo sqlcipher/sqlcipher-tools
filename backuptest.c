@@ -21,16 +21,19 @@ int main(int argc, char **argv) {
   if (sqlite3_open(infile, &indb) != SQLITE_OK) {
      ERROR(("sqlite3_open failed for %s: %s\n", infile, sqlite3_errmsg(indb)))
   }
+  sqlite3_exec(indb, "PRAGMA cache_size = 0;", NULL, 0, NULL);
 
   if (sqlite3_open(efile, &edb) != SQLITE_OK) {
      ERROR(("sqlite3_open failed for %s: %s\n", efile, sqlite3_errmsg(edb)))
   }
   sqlite3_key(edb, key, strlen(key));
+  sqlite3_exec(edb, "PRAGMA cache_size = 0;", NULL, 0, NULL);
   sqlite3_exec(edb, "SELECT count(*) FROM sqlite_master;", NULL, 0, NULL);
 
   if (sqlite3_open(outfile, &outdb) != SQLITE_OK) {
      ERROR(("sqlite3_open failed for %s: %s\n", outfile, sqlite3_errmsg(outdb)))
   }
+  sqlite3_exec(outdb, "PRAGMA cache_size = 0;", NULL, 0, NULL);
 
   /*
   sqlite3_backup *backup = sqlite3_backup_init(outdb, "main", indb, "main"); 
