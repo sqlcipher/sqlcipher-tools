@@ -14,9 +14,13 @@ int main(int argc, char **argv) {
   const char* key = "test123";
   const char* file = "sqlcipher.db";
   int i;
-  int loops = 1000000;
-  int insert_rows = 10;
-  int print_every = 1000;
+  int loops = 100000;
+  int insert_rows = 100;
+  int print_every = 100;
+
+  unsigned long inserts, deletes, updates;
+  inserts = deletes = updates = 0;
+
   srand(0);
 
   for(i = 0; i < loops; i++) {
@@ -70,7 +74,6 @@ int main(int argc, char **argv) {
         ERROR(("error starting transaction %s\n", sqlite3_errmsg(db)))
       }
      
-
       if(sqlite3_prepare_v2(db, "INSERT INTO t1(a,b) VALUES (?, ?);", -1, &stmt, NULL) == SQLITE_OK) {
         for(row = 0; row < insert_rows; row++) {
           sqlite3_bind_int(stmt, 1, rand());
@@ -79,10 +82,24 @@ int main(int argc, char **argv) {
             ERROR(("error inserting row %s\n", sqlite3_errmsg(db)))
             exit(1);
           }
+	  inserts++;
           sqlite3_reset(stmt);
         }
       } else {
         ERROR(("error preparing insert %s\n", sqlite3_errmsg(db)))
+        exit(1);
+      }
+      sqlite3_finalize(stmt);
+
+      if(sqlite3_prepare_v2(db, "UPDATE t1 SET b = ? WHERE a < ?;", -1, &stmt, NULL) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, rand());
+        sqlite3_bind_int(stmt, 2, rand());
+        if (sqlite3_step(stmt) != SQLITE_DONE) {
+          ERROR(("error updating rows %s\n", sqlite3_errmsg(db)))
+        }
+	updates += sqlite3_changes(db);
+      } else {
+        ERROR(("error preparing delete statement rows %s\n", sqlite3_errmsg(db)))
         exit(1);
       }
       sqlite3_finalize(stmt);
@@ -92,6 +109,7 @@ int main(int argc, char **argv) {
         if (sqlite3_step(stmt) != SQLITE_DONE) {
           ERROR(("error deleting rows %s\n", sqlite3_errmsg(db)))
         }
+	deletes += sqlite3_changes(db);
       } else {
         ERROR(("error preparing delete statement rows %s\n", sqlite3_errmsg(db)))
         exit(1);
@@ -109,4 +127,6 @@ int main(int argc, char **argv) {
       exit(1);
     }	
   }
+
+  printf("completed test run with %d open/begin/commit/closes, %lu row inserts, %lu row updates, and %lu row deletes\n", i, inserts, updates, deletes); 
 }
