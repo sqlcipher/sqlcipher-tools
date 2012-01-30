@@ -100,6 +100,11 @@ int main(int argc, char **argv) {
   INFO(("%s\n", sql));
   if( rc!=SQLITE_OK ) goto end_of_export;
 
+  sql = "SELECT sqlcipher_export('enc');";
+  rc = sqlite3_exec(db, sql, NULL, 0, NULL); 
+  INFO(("%s\n", sql));
+  if( rc!=SQLITE_OK ) goto end_of_export;
+
   sql = "DETACH DATABASE enc;";
   rc = sqlite3_exec(db, sql, NULL, 0, NULL); 
   INFO(("%s\n", sql));
@@ -108,7 +113,6 @@ int main(int argc, char **argv) {
   sql = NULL;
 
 end_of_export:
-  sqlite3_free(sql);
 
   if(rc != SQLITE_OK) {
     ERROR(("error %d: %s\n", rc, sqlite3_errmsg(db)))
