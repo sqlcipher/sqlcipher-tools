@@ -11,8 +11,12 @@
 
 int main(int argc, char **argv) {
   sqlite3 *db;
-  const char* key = "test123";
-  const char* file = "sqlcipher.db";
+  const char *file= "sqlcipher.db";
+
+  const char *key1 = "test123";
+  const char *key2 = "test321";
+  char* key = (char *) key1;
+
   int i;
   int loops = 100000;
   int insert_rows = 100;
@@ -40,12 +44,12 @@ int main(int argc, char **argv) {
         exit(1);
       }
 
+      key = (char*) (key == key1) ? key2: key1;
       if(sqlite3_rekey(db, key, strlen(key)) != SQLITE_OK) {
-	ERROR(("error setting rekey %s\n", sqlite3_errmsg(db)))
-        exit(1);
-      }
-    
-    
+         ERROR(("error setting rekey %s\n", sqlite3_errmsg(db)))
+         exit(1);
+       }
+
       /* read schema. If no rows, create table and stuff
          if error - close it up!*/
       if(sqlite3_prepare_v2(db, "SELECT count(*) FROM sqlite_master;", -1, &stmt, NULL) == SQLITE_OK) {
