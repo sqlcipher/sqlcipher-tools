@@ -12,14 +12,14 @@
 
 #define ERROR(X)  {printf("[ERROR] iteration %d: ", i); printf X;fflush(stdout);}
 #define PAGESIZE 1024
-#define PBKDF2_ITER 4000
+#define PBKDF2_ITER 64000
 #define FILE_HEADER_SZ 16
 
 int main(int argc, char **argv) {
   const char* infile = "sqlcipher.db";
   const char* outfile = "sqlite.db";
-  char *pass= "test123";
-  int i, csz, tmp_csz, key_sz, iv_sz;
+  char *pass= "testkey";
+  int i, csz, tmp_csz, key_sz, iv_sz, block_sz, hmac_sz, reserve_sz;
   FILE *infh, *outfh;
   int read, written;
   unsigned char *inbuffer, *outbuffer, *salt, *out, *key, *iv;
@@ -35,7 +35,14 @@ int main(int argc, char **argv) {
 
   iv_sz = EVP_CIPHER_iv_length(evp_cipher);
   iv = malloc(iv_sz);
+ 
+  hmac_sz = EVP_MD_size(EVP_sha1());
 
+  block_sz = EVP_CIPHER_block_size(evp_cipher);
+
+  reserve_sz = iv_sz + hmac_sz;
+  reserve_sz = ((reserve_sz % block_sz) == 0) ? reserve_sz : ((reserve_sz / block_sz) + 1) * block_sz; 
+               
   inbuffer = (unsigned char*) malloc(PAGESIZE);
   outbuffer = (unsigned char*) malloc(PAGESIZE);
   salt = malloc(FILE_HEADER_SZ);
@@ -51,12 +58,12 @@ int main(int argc, char **argv) {
   memset(outbuffer, 0, PAGESIZE);
   out = outbuffer;
 
-  memcpy(iv, inbuffer + PAGESIZE - iv_sz, iv_sz); /* last iv_sz bytes are the initialization vector */
+  memcpy(iv, inbuffer + PAGESIZE - reserve_sz, iv_sz); /* last iv_sz bytes are the initialization vector */
  
   EVP_CipherInit(&ectx, evp_cipher, NULL, NULL, 0);
   EVP_CIPHER_CTX_set_padding(&ectx, 0);
   EVP_CipherInit(&ectx, NULL, key, iv, 0);
-  EVP_CipherUpdate(&ectx, out, &tmp_csz, inbuffer + FILE_HEADER_SZ, PAGESIZE - iv_sz - FILE_HEADER_SZ);
+  EVP_CipherUpdate(&ectx, out, &tmp_csz, inbuffer + FILE_HEADER_SZ, PAGESIZE - reserve_sz - FILE_HEADER_SZ);
   csz = tmp_csz;  
   out += tmp_csz;
   EVP_CipherFinal(&ectx, out, &tmp_csz);
@@ -69,14 +76,14 @@ int main(int argc, char **argv) {
   printf("wrote page %d\n", 0);
 
   for(i = 1; (read = fread(inbuffer, 1, PAGESIZE, infh)) > 0 ;i++) {
-    memcpy(iv, inbuffer + PAGESIZE - iv_sz, iv_sz); /* last iv_sz bytes are the initialization vector */
+    memcpy(iv, inbuffer + PAGESIZE - reserve_sz, iv_sz); /* last iv_sz bytes are the initialization vector */
     memset(outbuffer, 0, PAGESIZE);
     out = outbuffer;
  
     EVP_CipherInit(&ectx, evp_cipher, NULL, NULL, 0);
     EVP_CIPHER_CTX_set_padding(&ectx, 0);
     EVP_CipherInit(&ectx, NULL, key, iv, 0);
-    EVP_CipherUpdate(&ectx, out, &tmp_csz, inbuffer, PAGESIZE - iv_sz);
+    EVP_CipherUpdate(&ectx, out, &tmp_csz, inbuffer, PAGESIZE - reserve_sz);
     csz = tmp_csz;  
     out += tmp_csz;
     EVP_CipherFinal(&ectx, out, &tmp_csz);
