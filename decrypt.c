@@ -47,8 +47,8 @@ int main(int argc, char **argv) {
   outbuffer = (unsigned char*) malloc(PAGESIZE);
   salt = malloc(FILE_HEADER_SZ);
 
-  infh = fopen(infile, "r");
-  outfh = fopen(outfile, "w");
+  infh = fopen(infile, "rb");
+  outfh = fopen(outfile, "wb");
   
   read = fread(inbuffer, 1, PAGESIZE, infh);  /* read the first page */
   memcpy(salt, inbuffer, FILE_HEADER_SZ); /* first 16 bytes are the random database salt */
