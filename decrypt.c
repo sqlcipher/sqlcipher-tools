@@ -5,6 +5,7 @@
 */
 
 #include <stdio.h>
+#include <unistd.h> 
 #include <string.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -15,9 +16,49 @@
 #define PBKDF2_ITER 64000
 #define FILE_HEADER_SZ 16
 
+const char *usage =
+        "Usage: decrypt [options]\n"
+        "\n"
+        "Options :\n"
+        "\n"
+        "\t-f filename input filename (default sqlcipher.db).\n"
+        "\t-o filename output filename (default sqlite.db).\n"
+        "\t-k key      key (default testkey).\n"
+        "\t-h          help (this text)\n"
+        "\n"
+        "\n"
+        ;
+const char *optstring = "hi:o:k:";
+
+int parse_args(int argc, char **argv, char **key, char **input, char **output) 
+{
+        int c;
+
+        while((c = getopt(argc, argv, optstring)) != -1) {
+                switch (c) {
+                case 'i':
+                        *input = optarg;
+                        break;
+                case 'o':
+                        *output = optarg;
+                        break;
+                case 'k':
+                        *key = optarg;
+                        break;
+                case 'h':
+                default:
+                        fputs(usage, stderr);
+                        return 0;
+                }
+        }
+
+        return 1;
+}
+
+
 int main(int argc, char **argv) {
-  const char* infile = "sqlcipher.db";
-  const char* outfile = "sqlite.db";
+  char* infile = "sqlcipher.db";
+  char* outfile = "sqlite.db";
   char *pass= "testkey";
   int i, csz, tmp_csz, key_sz, iv_sz, block_sz, hmac_sz, reserve_sz;
   FILE *infh, *outfh;
@@ -25,6 +66,8 @@ int main(int argc, char **argv) {
   unsigned char *inbuffer, *outbuffer, *salt, *out, *key, *iv;
   EVP_CIPHER *evp_cipher;
   EVP_CIPHER_CTX ectx;
+
+  if (!parse_args(argc, argv, &pass, &infile, &outfile)) return 1;
 
   OpenSSL_add_all_algorithms();
 
@@ -48,8 +91,18 @@ int main(int argc, char **argv) {
   salt = malloc(FILE_HEADER_SZ);
 
   infh = fopen(infile, "rb");
+
+  if(infh == NULL) {
+    printf("unable to open input file %s\n", infile);
+    exit(1);
+  }
+
   outfh = fopen(outfile, "wb");
-  
+  if(outfh == NULL) {
+    printf("unable to open output file %s\n", outfile);
+    exit(1);
+  }
+ 
   read = fread(inbuffer, 1, PAGESIZE, infh);  /* read the first page */
   memcpy(salt, inbuffer, FILE_HEADER_SZ); /* first 16 bytes are the random database salt */
 
