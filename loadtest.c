@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
 
   const char *key = "test"; 
   char *buffer = malloc(LOOPS);
+  sqlite3_int64 current, highwater;
 
   for(i = 0; i < LOOPS; i++) {
     *(buffer+i) = 'a';
@@ -40,11 +41,24 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
+/*
   if(sqlite3_exec(db, "PRAGMA cipher_memory_security = OFF;", NULL, NULL, NULL) != SQLITE_OK) {
     exit(1);
   }
+*/
 
   for(i = 0; i < LOOPS; i++) {
+
+/*
+    if(sqlite3_exec(db, "DELETE FROM t1;", NULL, NULL, NULL) != SQLITE_OK) {
+      exit(1);
+    }
+
+    if(sqlite3_exec(db, "VACUUM;", NULL, NULL, NULL) != SQLITE_OK) {
+      exit(1);
+    }
+*/
+
     gettimeofday(&start, NULL);
 
     if(sqlite3_exec(db, "BEGIN;", NULL, NULL, NULL) != SQLITE_OK) {
@@ -58,7 +72,8 @@ int main(int argc, char **argv) {
     }
 
     for(row = 0; row < insert_rows; row++) {
-      sqlite3_bind_text(stmt, 1, buffer, i, SQLITE_TRANSIENT);
+      //sqlite3_bind_text(stmt, 1, buffer, i, SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 1, buffer, i, SQLITE_STATIC);
       if (sqlite3_step(stmt) != SQLITE_DONE) {
         ERROR(("error inserting row %s\n", sqlite3_errmsg(db)))
         exit(1);
@@ -66,6 +81,19 @@ int main(int argc, char **argv) {
       sqlite3_reset(stmt);
     }
     sqlite3_finalize(stmt);
+
+    sqlite3_status64(SQLITE_STATUS_MEMORY_USED, &current, &highwater, 0);
+    printf("SQLITE_STATUS_MEMORY_USED current=%lld, highwater=%lld\n", current, highwater);
+    sqlite3_status64(SQLITE_STATUS_MALLOC_SIZE, &current, &highwater, 0);
+    printf("SQLITE_STATUS_MALLOC_SIZE current=%lld, highwater=%lld\n", current, highwater);
+    sqlite3_status64(SQLITE_STATUS_MALLOC_COUNT, &current, &highwater, 0);
+    printf("SQLITE_STATUS_MALLOC_COUNT current=%lld, highwater=%lld\n", current, highwater);
+    sqlite3_status64(SQLITE_STATUS_PAGECACHE_USED, &current, &highwater, 0);
+    printf("SQLITE_STATUS_PAGECACHE_USED current=%lld, highwater=%lld\n", current, highwater);
+    sqlite3_status64(SQLITE_STATUS_PAGECACHE_OVERFLOW, &current, &highwater, 0);
+    printf("SQLITE_STATUS_PAGECACHE_OVERFLOW current=%lld, highwater=%lld\n", current, highwater);
+    sqlite3_status64(SQLITE_STATUS_PAGECACHE_SIZE, &current, &highwater, 0);
+    printf("SQLITE_STATUS_PAGECACHE_SIZE current=%lld, highwater=%lld\n", current, highwater);
 
     if(sqlite3_exec(db, "COMMIT;", NULL, NULL, NULL) != SQLITE_OK) {
       ERROR(("error committing transaction %s\n", sqlite3_errmsg(db)))
