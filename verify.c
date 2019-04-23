@@ -41,6 +41,32 @@
 #define HMAC_FUNC EVP_sha1()
 #endif
 
+static int cipher_hex2int(char c) {
+  return (c>='0' && c<='9') ? (c)-'0' :
+         (c>='A' && c<='F') ? (c)-'A'+10 :
+         (c>='a' && c<='f') ? (c)-'a'+10 : 0;
+}
+
+static void cipher_hex2bin(const unsigned char *hex, int sz, unsigned char *out){
+  int i;
+  for(i = 0; i < sz; i += 2){
+    out[i/2] = (cipher_hex2int(hex[i])<<4) | cipher_hex2int(hex[i+1]);
+  }
+}
+
+static int cipher_isHex(const unsigned char *hex, int sz){
+  int i;
+  for(i = 0; i < sz; i++) {
+    unsigned char c = hex[i];
+    if ((c < '0' || c > '9') &&
+        (c < 'A' || c > 'F') &&
+        (c < 'a' || c > 'f')) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 #if (defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 static HMAC_CTX *HMAC_CTX_new(void)
 {
@@ -144,7 +170,11 @@ int main(int argc, char **argv) {
     hmac_salt[i] ^= HMAC_SALT_MASK;
   }
 
-  if(!PKCS5_PBKDF2_HMAC((const char *)pass, strlen(pass), salt, FILE_HEADER_SZ, PBKDF2_ITER, HMAC_FUNC, key_sz, key)) goto error;
+  if (strlen(pass) == ((key_sz * 2) + 3) && strncmp(pass ,"x'", 2) == 0 && cipher_isHex((const unsigned char*) pass + 2, key_sz * 2)) {
+    cipher_hex2bin((const unsigned char *) pass + 2, strlen(pass) - 2, key);
+  } else {
+    if(!PKCS5_PBKDF2_HMAC((const char *)pass, strlen(pass), salt, FILE_HEADER_SZ, PBKDF2_ITER, HMAC_FUNC, key_sz, key)) goto error;
+  }
   if(!PKCS5_PBKDF2_HMAC((const char *)key, key_sz, hmac_salt, FILE_HEADER_SZ, FAST_PBKDF2_ITER, HMAC_FUNC, key_sz, hmac_key)) goto error;
 
   i = 1;
